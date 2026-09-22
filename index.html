@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DARKTRACE — a case board, narrated by Mira</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#4A3550; --ink2:#7A6383; --paper:#FBF3E7;
+  --pink:#F3719C; --pink-l:#FFC2D6; --lav:#A88BE0; --lav-l:#DCCBFF;
+  --mint:#3FAE85; --mint-l:#C6F0DE; --sky:#3D9BC9; --sky-l:#C3E8F8;
+  --butter:#E0A400; --butter-l:#FFE8AE; --coral:#E85C41; --red:#D6456A;
+  --disp:"Fredoka",system-ui,sans-serif; --body:"Quicksand",system-ui,sans-serif;
+  --hand:"Kalam",cursive;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+:root:not([data-theme="light"]){color-scheme:light}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-behavior:smooth;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;font-family:var(--body);color:var(--ink);background:var(--paper);
+  font-size:16px;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:3px solid var(--lav);outline-offset:3px;border-radius:6px}
+
+/* ---------- corkboard paper backdrop, not a glossy gradient ---------- */
+#paperbg{position:fixed;inset:0;z-index:-3;background:
+  radial-gradient(1.5px 1.5px at 8px 8px,rgba(120,90,80,.09) 1px,transparent 1.6px) 0 0/26px 26px,
+  var(--paper)}
+#wash{position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:
+    radial-gradient(60% 40% at 12% 6%,rgba(243,113,156,.10),transparent 65%),
+    radial-gradient(50% 36% at 90% 14%,rgba(168,139,224,.11),transparent 65%),
+    radial-gradient(55% 42% at 20% 92%,rgba(63,174,133,.09),transparent 65%),
+    radial-gradient(55% 40% at 88% 88%,rgba(224,164,0,.08),transparent 65%)}
+#fibers{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background:repeating-linear-gradient(3deg,rgba(120,90,80,.035) 0 1px,transparent 1px 5px)}
+
+/* ---------- cursor sparkle trail ---------- */
+.spark{position:fixed;z-index:9998;pointer-events:none;font-size:14px;
+  animation:sparkfade .8s ease-out forwards}
+@keyframes sparkfade{0%{opacity:.9;transform:translateY(0) scale(1) rotate(0)}
+  100%{opacity:0;transform:translateY(-26px) scale(.4) rotate(35deg)}}
+
+/* ---------- floating stickers ---------- */
+.sticker{position:fixed;z-index:0;pointer-events:auto;cursor:pointer;
+  filter:drop-shadow(0 3px 5px rgba(110,80,90,.22));animation:bob 8s ease-in-out infinite;
+  transition:transform .18s}
+.sticker:hover{transform:scale(1.22) rotate(var(--r,0deg))}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}
+  50%{transform:translateY(-14px) rotate(calc(var(--r,0deg) + 5deg))}}
+
+/* ---------- pushpins + sticky-note pop-up facts ---------- */
+.pin{position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:26px;cursor:pointer;margin-left:6px;transform:rotate(-6deg);vertical-align:middle}
+.pin svg{width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(90,60,40,.35))}
+.pin:hover{animation:wiggle .4s ease}
+@keyframes wiggle{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(10deg)}}
+.stickynote{position:absolute;z-index:40;width:220px;padding:16px 16px 14px;
+  background:#FFF6BF;border-radius:2px 2px 10px 2px;font-family:var(--hand);font-size:16px;line-height:1.42;
+  color:#5B4A1E;box-shadow:3px 6px 14px -4px rgba(70,50,20,.4), 0 0 0 1px rgba(0,0,0,.03);
+  opacity:0;transform:translateY(10px) rotate(-3deg) scale(.9);
+  transition:opacity .28s cubic-bezier(.2,1.4,.4,1),transform .28s cubic-bezier(.2,1.4,.4,1);pointer-events:none}
+.stickynote.show{opacity:1;transform:rotate(-3deg) scale(1);pointer-events:auto}
+.stickynote::before{content:"";position:absolute;left:50%;top:-9px;width:20px;height:20px;
+  transform:translateX(-50%) rotate(45deg);background:#E8556D;border-radius:3px;box-shadow:0 2px 3px rgba(0,0,0,.3)}
+.stickynote .x{position:absolute;top:5px;right:8px;font-family:var(--disp);font-size:13px;color:#8a733a;opacity:.7}
+.stickynote .x:hover{opacity:1}
+.stickynote.mint{background:#D8F6E6}.stickynote.mint::before{background:var(--mint)}
+.stickynote.sky{background:#DBF1FC}.stickynote.sky::before{background:var(--sky)}
+.stickynote.pink{background:#FFE3EE}.stickynote.pink::before{background:var(--pink)}
+
+/* ---------- achievement toasts ---------- */
+#toasts{position:fixed;top:16px;right:16px;z-index:9000;display:flex;flex-direction:column;gap:10px;
+  max-width:min(300px,80vw)}
+.toast{background:#fff;border-radius:16px 4px 16px 4px;padding:12px 16px;display:flex;gap:10px;align-items:center;
+  box-shadow:4px 6px 0 -1px var(--lav-l),0 10px 24px -14px rgba(90,60,110,.6);
+  border:2px solid var(--ink);transform:translateX(120%) rotate(3deg);opacity:0;
+  transition:transform .5s cubic-bezier(.2,1.4,.3,1),opacity .3s;font-family:var(--disp);font-weight:600;font-size:13.5px}
+.toast.show{transform:none;opacity:1}
+.toast .em{font-size:20px}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px;position:relative;z-index:2}
+section{padding:88px 0;position:relative}
+.reveal{opacity:0;transform:translateY(50px) rotate(-1deg);
+  transition:opacity .75s cubic-bezier(.2,.8,.25,1),transform .75s cubic-bezier(.2,.8,.25,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}.reveal.d3{transition-delay:.24s}
+
+/* hand-torn card: no perfect rounded-rectangle, no glass blur */
+.card{position:relative;background:#FFFDF8;border:2.5px solid var(--ink);border-radius:3px 16px 4px 15px/14px 4px 16px 3px;
+  box-shadow:6px 7px 0 -1px rgba(0,0,0,0),6px 7px 0 0 var(--shadow,var(--lav-l));
+  padding:24px}
+.card.rot-l{transform:rotate(-.6deg)} .card.rot-r{transform:rotate(.7deg)}
+.tape{position:absolute;height:26px;width:78px;background:rgba(255,246,191,.85);
+  border:1px solid rgba(0,0,0,.06);box-shadow:0 2px 4px rgba(0,0,0,.12);opacity:.9}
+.tape.a{top:-13px;left:26px;transform:rotate(-7deg)}
+.tape.b{top:-13px;right:20px;transform:rotate(6deg);background:rgba(198,240,222,.85)}
+
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(38px,7.4vw,74px);line-height:1;
+  margin:0 0 10px;letter-spacing:-.01em}
+h2{font-family:var(--disp);font-weight:600;font-size:clamp(25px,4vw,37px);margin:0 0 8px;letter-spacing:-.005em;
+  display:inline-flex;align-items:center;gap:2px}
+h3{font-family:var(--disp);font-weight:600;font-size:18.5px;margin:0 0 6px}
+p.lead{font-size:17.5px;color:var(--ink2);max-width:58ch;margin:0 0 20px}
+.scribble{position:relative;display:inline-block}
+.scribble svg{position:absolute;left:0;bottom:-6px;width:100%;height:14px}
+.hand{font-family:var(--hand);color:var(--pink);font-size:1.05em}
+
+.eyebrow{font-family:var(--hand);font-weight:700;font-size:17px;color:var(--red);
+  margin-bottom:6px;transform:rotate(-1.2deg);display:inline-block}
+.tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--disp);font-weight:600;
+  font-size:12.5px;padding:5px 13px 6px;border-radius:999px;background:#fff;border:2px solid var(--ink);
+  box-shadow:2px 3px 0 var(--lav-l)}
+.tag.pink{box-shadow:2px 3px 0 var(--pink-l)}
+.tag.mint{box-shadow:2px 3px 0 var(--mint-l)}
+.tag.butter{box-shadow:2px 3px 0 var(--butter-l)}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--disp);font-weight:600;font-size:15.5px;
+  padding:12px 24px;border-radius:999px;background:var(--pink);color:#fff;border:2.5px solid var(--ink);
+  box-shadow:3px 4px 0 var(--ink);transition:transform .15s,box-shadow .15s}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:5px 6px 0 var(--ink)}
+.btn:active{transform:translate(1px,1px);box-shadow:1px 2px 0 var(--ink)}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn.lav{background:var(--lav)}.btn.mint{background:var(--mint)}
+
+/* ---------- hero ---------- */
+#hero{min-height:100svh;display:grid;align-content:center;padding-top:70px}
+h1 .ch{display:inline-block;opacity:0;transform:translateY(60px) rotate(-10deg);
+  animation:drop .75s cubic-bezier(.2,1.5,.4,1) forwards}
+@keyframes drop{to{opacity:1;transform:none}}
+h1 .ch:nth-child(3n+1){color:var(--pink)}h1 .ch:nth-child(3n+2){color:var(--lav)}h1 .ch:nth-child(3n){color:var(--sky)}
+.hero-tags{display:flex;gap:9px;flex-wrap:wrap;margin:16px 0 26px}
+.scrollcue{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
+  font-family:var(--hand);font-size:16px;color:var(--ink2);animation:bob 3s ease-in-out infinite}
+.washi-strip{position:absolute;top:18%;right:6%;width:130px;height:34px;background:repeating-linear-gradient(45deg,var(--butter-l),var(--butter-l) 8px,#fff8e0 8px,#fff8e0 16px);
+  transform:rotate(9deg);opacity:.85;box-shadow:0 3px 6px rgba(0,0,0,.12)}
+
+/* ---------- grid / features ---------- */
+.grid{display:grid;gap:20px}
+.g3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.g2{grid-template-columns:1.2fr .9fr}
+@media(max-width:860px){.g2{grid-template-columns:1fr}}
+.feat{padding:22px;position:relative}
+.feat .ic{width:50px;height:50px;border-radius:50% 40% 50% 42%;display:grid;place-items:center;margin-bottom:12px;
+  border:2px solid var(--ink);font-size:22px}
+.feat p{margin:0;color:var(--ink2);font-size:14.5px}
+.no-list{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.no-list li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--ink2)}
+.no-list .x{color:var(--red);font-family:var(--hand);font-weight:700;font-size:19px;line-height:1}
+
+/* ---------- belt / jar ---------- */
+.beltbox{height:210px;position:relative;overflow:hidden}
+.flyer{position:absolute;font-family:var(--disp);font-size:12px;font-weight:600;padding:5px 12px;
+  border:1.6px solid var(--ink);border-radius:999px;white-space:nowrap;
+  box-shadow:2px 3px 0 rgba(0,0,0,.15);animation:fly 7s linear infinite}
+@keyframes fly{0%{left:-30%;opacity:0}8%{opacity:1}72%{opacity:1}
+  86%{left:60%;opacity:0;transform:scale(.4) translateY(28px) rotate(30deg)}100%{left:60%;opacity:0}}
+.jar{position:absolute;right:6%;top:50%;transform:translateY(-50%) rotate(-3deg);animation:bob 4.4s ease-in-out infinite}
+
+/* ---------- graph ---------- */
+.graphbox{position:relative;height:clamp(380px,60vh,540px);overflow:hidden;background:#FFFDF8}
+#gcanvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+#gcanvas:active{cursor:grabbing}
+.gpanel{position:absolute;background:#fff;border:2px solid var(--ink);border-radius:4px 14px 4px 14px;
+  box-shadow:3px 4px 0 var(--lav-l);padding:13px}
+.gleft{top:14px;left:14px;width:192px;transform:rotate(-.8deg)}
+.gleft h4{font-family:var(--hand);font-size:15px;color:var(--red);margin:0 0 8px}
+.gleft label{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);padding:2px 0;cursor:pointer}
+.gleft input[type=checkbox]{appearance:none;width:14px;height:14px;border-radius:4px;
+  border:2px solid var(--kc,var(--lav));transition:.15s}
+.gleft input[type=checkbox]:checked{background:var(--kc,var(--lav))}
+.gleft input[type=range]{width:100%;accent-color:var(--pink)}
+.gright{top:14px;right:14px;width:230px;max-height:calc(100% - 28px);overflow:auto;transform:rotate(.6deg)}
+@media(max-width:760px){.gright{position:static;width:auto;margin-top:12px;max-height:none;transform:none}
+  .gleft{position:static;width:auto;margin-bottom:12px;transform:none}
+  .graphbox{height:auto;padding:14px;display:block}
+  #gcanvas{position:relative;height:320px;border-radius:10px}}
+.gright .ttl{font-family:var(--disp);font-weight:600;font-size:16px;word-break:break-all}
+.kv{display:grid;grid-template-columns:76px 1fr;gap:4px 8px;font-size:12px;color:var(--ink2);margin:9px 0}
+.kv b{color:var(--ink);font-weight:600;word-break:break-all}
+.rel{font-size:12px;padding:7px 9px;border-radius:8px;background:#FBF6FF;margin-bottom:6px;cursor:pointer;
+  border:1.5px solid #EEE1FA;transition:.15s}
+.rel:hover{transform:translateX(3px) rotate(-.4deg);border-color:var(--lav)}
+.rel .t{font-family:var(--hand);font-size:13px;color:var(--lav)}
+.gtip{position:absolute;pointer-events:none;background:#fff;border:2px solid var(--ink);border-radius:8px;
+  padding:4px 9px;font-size:12px;font-family:var(--disp);opacity:0;transition:opacity .15s;z-index:9;white-space:nowrap;
+  box-shadow:2px 2px 0 var(--lav-l)}
+
+/* ---------- actors ---------- */
+.acard{padding:18px;cursor:pointer;transition:transform .2s}
+.acard:nth-child(3n+1){transform:rotate(-.9deg)}.acard:nth-child(3n+2){transform:rotate(.6deg)}.acard:nth-child(3n){transform:rotate(-.3deg)}
+.acard:hover{transform:translateY(-5px) rotate(0deg) scale(1.02)}
+.acard .top{display:flex;align-items:center;gap:11px}
+.blob{width:44px;height:44px;border-radius:50% 42% 50% 46%;display:grid;place-items:center;
+  font-family:var(--disp);font-weight:700;color:#fff;font-size:14px;border:2px solid var(--ink)}
+.meter{height:10px;border-radius:99px;background:#F2ECF8;margin:13px 0 7px;overflow:hidden;border:1.5px solid var(--ink)}
+.meter i{display:block;height:100%;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+.mini{font-size:12px;color:var(--ink2);display:flex;justify-content:space-between}
+.gauge{text-align:center}
+.gauge svg{width:200px;height:112px;max-width:100%}
+.gauge .v{font-family:var(--disp);font-weight:700;font-size:36px;margin-top:-44px}
+.gauge .c{font-family:var(--hand);font-weight:700;font-size:15px}
+.evline{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:6px 0;border-bottom:1.5px dashed #EFE3F7;color:var(--ink2)}
+.note{border-radius:4px 14px 4px 14px;padding:13px 17px;font-size:13.5px;line-height:1.55;
+  background:#FFF3CE;border:2px solid var(--ink);color:#6b520d;box-shadow:2px 3px 0 var(--butter-l)}
+
+/* ---------- timeline (corkboard) ---------- */
+.corkboard{position:relative;background:
+    repeating-linear-gradient(0deg,rgba(120,80,50,.05) 0 1px,transparent 1px 24px),
+    repeating-linear-gradient(90deg,rgba(120,80,50,.05) 0 1px,transparent 1px 24px),
+    #E9C99A;border:2.5px solid var(--ink);border-radius:6px;padding:34px 22px;overflow:hidden}
+.tlrow{display:inline-block;width:182px;vertical-align:top;margin:10px 12px 26px;
+  opacity:0;transform:translateY(30px) rotate(0);transition:.7s cubic-bezier(.2,.8,.2,1)}
+.tlrow.in{opacity:1;transform:none}
+.tlrow .card{padding:13px 14px;font-size:12.5px}
+.tlrow .d{font-family:var(--hand);font-weight:700;font-size:14px;color:var(--red)}
+.tlrow .t{font-family:var(--disp);font-weight:600;font-size:14.5px;margin:3px 0 5px}
+.tlrow .s{color:var(--ink2);font-size:12px}
+.string{position:absolute;height:2px;background:repeating-linear-gradient(90deg,#8a6a3f 0 6px,transparent 6px 10px);
+  transform-origin:left center}
+
+/* ---------- stylometry ---------- */
+textarea{width:100%;height:148px;border-radius:4px 14px 4px 14px;border:2px solid var(--ink);padding:13px;
+  font-family:var(--body);font-size:13.5px;color:var(--ink);background:#FFFDFA;resize:vertical;line-height:1.6}
+textarea:focus{outline:none;box-shadow:3px 4px 0 var(--lav-l)}
+.featline{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink2);margin-bottom:8px}
+.featline .tr{flex:1;height:9px;border-radius:99px;background:#F2ECF8;overflow:hidden;border:1.5px solid var(--ink)}
+.featline .tr i{display:block;height:100%;width:0;border-radius:99px;background:var(--sky);transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.featline b{min-width:32px;text-align:right;color:var(--ink)}
+
+/* ---------- report ---------- */
+.doc{padding:24px;opacity:0;transform:translateY(20px) rotate(-.4deg);transition:.7s}
+.doc.in{opacity:1;transform:rotate(-.2deg)}
+.doc table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+.doc th{text-align:left;color:var(--ink2);font-weight:600;font-size:12px;padding:7px;border-bottom:2px solid var(--ink)}
+.doc td{padding:7px;border-bottom:1.5px dashed #E7D9F4}
+.runlog{font-family:var(--hand);font-size:15.5px;color:var(--ink2);min-height:100px}
+.runlog .ok{color:var(--mint);font-weight:700}
+.stampbox{display:inline-block;transform:rotate(-9deg);border:3px solid var(--red);color:var(--red);
+  font-family:var(--disp);font-weight:700;font-size:13px;padding:5px 12px;border-radius:6px;opacity:.85;letter-spacing:.05em}
+
+/* ---------- MIRA avatar ---------- */
+#mira{position:fixed;left:16px;bottom:16px;z-index:60;display:flex;align-items:flex-end;gap:12px;
+  transform:translateY(160%);transition:transform .8s cubic-bezier(.2,1.3,.4,1)}
+#mira.up{transform:none}
+.miraholder{position:relative;width:126px;height:144px;flex:none;cursor:pointer;
+  animation:idle 5s ease-in-out infinite;filter:drop-shadow(3px 6px 4px rgba(70,50,60,.3))}
+@keyframes idle{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-9px) rotate(1.5deg)}}
+.miraholder svg{width:100%;height:100%;overflow:visible}
+.eyelid{transform-origin:center;transform:scaleY(0);animation:blink 6s infinite}
+@keyframes blink{0%,94%,100%{transform:scaleY(0)}96%,98%{transform:scaleY(1)}}
+.mouth{transform-origin:center;transition:transform .09s}
+#mira.talking .mouth{animation:talk .22s infinite alternate}
+@keyframes talk{from{transform:scaleY(.4)}to{transform:scaleY(1.35)}}
+#mira.talking .miraholder{animation:idle 1.4s ease-in-out infinite}
+.notewave{position:absolute;font-family:var(--hand);font-size:20px;color:var(--lav);opacity:0;pointer-events:none}
+#mira.talking .notewave{animation:notefly 1.8s ease-out infinite}
+@keyframes notefly{0%{opacity:0;transform:translateY(0) translateX(0) rotate(0)}
+  15%{opacity:.9}100%{opacity:0;transform:translateY(-46px) translateX(14px) rotate(24deg)}}
+.bubble{position:relative;max-width:min(360px,55vw);background:#FFFDF8;border:2.5px solid var(--ink);
+  border-radius:4px 20px 20px 20px;padding:16px 18px;box-shadow:4px 6px 0 var(--lav-l);
+  font-size:14.5px;line-height:1.55;opacity:0;transform:translateY(14px) scale(.92) rotate(-1deg);
+  transition:.35s cubic-bezier(.2,1.3,.4,1)}
+.bubble.show{opacity:1;transform:rotate(-.4deg)}
+.bubble .who{font-family:var(--hand);font-weight:700;font-size:16px;color:var(--pink);margin-bottom:2px}
+.bubble .ctrls{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+.tiny{font-family:var(--disp);font-weight:600;font-size:11.5px;padding:6px 12px;border-radius:999px;
+  background:#F7F1FF;color:var(--ink2);border:1.6px solid var(--ink);transition:.16s}
+.tiny:hover{transform:translateY(-1px)}
+.tiny.on{background:var(--pink);color:#fff}
+.bubble .caret{position:absolute;left:-11px;bottom:16px;width:0;height:0;
+  border:9px solid transparent;border-right-color:var(--ink)}
+.bubble .caret::after{content:"";position:absolute;left:2.5px;top:-7px;border:7px solid transparent;border-right-color:#FFFDF8}
+@media(max-width:700px){
+  #mira{left:8px;right:8px;bottom:8px}
+  .miraholder{width:88px;height:100px}
+  .bubble{max-width:none;flex:1;font-size:13.5px;padding:12px 14px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .reveal{opacity:1;transform:none}}
+footer{padding:50px 0 150px;text-align:center;color:var(--ink2);font-size:13.5px}
+</style>
+</head>
+<body>
+<div id="paperbg"></div><div id="wash"></div><div id="fibers"></div>
+<div id="stickers"></div>
+<div id="toasts"></div>
+
+<main>
+<!-- ============ HERO ============ -->
+<section id="hero">
+  <div class="washi-strip"></div>
+  <div class="wrap">
+    <div class="eyebrow">✂ case file · pinned to the board by hand</div>
+    <h1 id="bigtitle">DARKTRACE</h1>
+    <p class="lead reveal in d1" style="font-size:19px">A threat-intel case board that shows its work. Mira's stuck to the corner of the screen — poke her, she'll talk you through the whole thing.</p>
+    <div class="hero-tags reveal in d2">
+      <span class="tag pink">♡ evidence, not vibes</span>
+      <span class="tag mint">✿ nothing's ever "confirmed"</span>
+      <span class="tag butter">★ 100% synthetic corpus</span>
+    </div>
+    <div class="reveal in d3" style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn" id="starttour">▶ walk me through it</button>
+      <button class="btn ghost" id="skiptour">I'll poke around myself</button>
+    </div>
+  </div>
+  <div class="scrollcue">scroll down, there's more taped below ↓</div>
+</section>
+
+<!-- ============ WHAT IT IS ============ -->
+<section id="s-about">
+  <div class="wrap">
+    <div class="eyebrow">chapter one</div>
+    <h2 class="reveal">what this thing actually does<span class="pin" data-fact="fact-about" title="fun fact">📌</span></h2>
+    <p class="lead reveal d1">It gathers intel an analyst is <em>allowed</em> to have, pulls identifiers out of it, and shows how they connect. Then it tells you exactly how sure it is — and why.</p>
+    <div class="grid g3" style="margin-top:24px">
+      <div class="card feat reveal d1"><div class="tape a"></div>
+        <div class="ic" style="background:var(--pink-l)">🍓</div>
+        <h3>Collect<span class="pin" data-fact="fact-collect">📌</span></h3>
+        <p>Authorized feeds, research sets, analyst notes — each one keeps its source, timestamp and reliability tag.</p></div>
+      <div class="card feat reveal d2"><div class="tape b"></div>
+        <div class="ic" style="background:var(--sky-l)">🐚</div>
+        <h3>Correlate</h3>
+        <p>Handles, PGP keys, wallets, onion IDs and infra metadata get matched using weighted, tune-able evidence.</p></div>
+      <div class="card feat reveal d3">
+        <div class="ic" style="background:var(--mint-l)">✿</div>
+        <h3>Explain<span class="pin" data-fact="fact-explain">📌</span></h3>
+        <p>Every score shows its receipts: what backed it, what argued against it, which evidence IDs it's built on.</p></div>
+    </div>
+    <div class="card reveal d1 rot-l" style="margin-top:22px">
+      <h3 style="color:var(--red)">what it flatly refuses to do</h3>
+      <ul class="no-list" style="margin-top:10px">
+        <li><span class="x">✕</span> attack, scan or exploit hidden services or relays</li>
+        <li><span class="x">✕</span> try to break Tor anonymity or deanonymize ordinary users</li>
+        <li><span class="x">✕</span> identify private individuals from sensitive personal data</li>
+        <li><span class="x">✕</span> call an inference a confirmed real-world identity</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INGEST ============ -->
+<section id="s-ingest">
+  <div class="wrap">
+    <div class="eyebrow">chapter two</div>
+    <h2 class="reveal">observations in, identifiers out</h2>
+    <p class="lead reveal d1">Drop in JSON, CSV or a STIX-like bundle. Watch each record get read and its identifiers lifted straight into the jar.</p>
+    <div class="card beltbox reveal d1 rot-r" id="belt"></div>
+    <div class="grid g3 reveal d2" style="margin-top:18px">
+      <div class="card feat"><h3>Normalised</h3><p>Handles case-folded, wallets pattern-checked, addresses canonicalised before anything gets compared.</p></div>
+      <div class="card feat"><h3>Traceable</h3><p>Every entity keeps first-seen, last-seen, source count and the SHA-256 of the file it arrived in.</p></div>
+      <div class="card feat"><h3>Rated<span class="pin" data-fact="fact-rated">📌</span></h3><p>Sources are PRIMARY, SECONDARY, ANALYST or SYNTHETIC — none trusted just for wearing the label.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GRAPH ============ -->
+<section id="s-graph">
+  <div class="wrap">
+    <div class="eyebrow">chapter three</div>
+    <h2 class="reveal">the relationship board<span class="pin" data-fact="fact-graph">📌</span></h2>
+    <p class="lead reveal d1">Drag a bubble, scroll to zoom, tap one to read what ties it to the rest. Dashed threads are hunches, not facts — they stay dashed on purpose.</p>
+    <div class="card graphbox reveal d1">
+      <canvas id="gcanvas"></canvas>
+      <div class="gtip" id="gtip"></div>
+      <div class="gpanel gleft">
+        <h4>show me…</h4><div id="filters"></div>
+        <h4 style="margin-top:11px">min confidence · <span id="confval" style="color:var(--pink)">40</span></h4>
+        <input type="range" id="confrange" min="0" max="100" value="40">
+        <button class="tiny" id="replay" style="margin-top:9px;width:100%">shuffle the board ✦</button>
+      </div>
+      <div class="gpanel gright" id="inspector">
+        <div class="ttl">tap a bubble ✿</div>
+        <p style="font-size:12.5px;color:var(--ink2);margin:8px 0 0">every node opens its identifiers, relationships, and the evidence behind each one.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ACTORS ============ -->
+<section id="s-actors">
+  <div class="wrap">
+    <div class="eyebrow">chapter four</div>
+    <h2 class="reveal">actors, and how sure we are</h2>
+    <p class="lead reveal d1">Six pseudonymous entities live in this demo corpus. Pick one to see the case for — and against.</p>
+    <div class="grid g3 reveal d1" id="actorgrid"></div>
+    <div id="actordetail" style="margin-top:22px"></div>
+  </div>
+</section>
+
+<!-- ============ TIMELINE ============ -->
+<section id="s-timeline">
+  <div class="wrap">
+    <div class="eyebrow">chapter five</div>
+    <h2 class="reveal">pinned to the corkboard, in order<span class="pin" data-fact="fact-timeline">📌</span></h2>
+    <p class="lead reveal d1">ShadowFox, from first sighting to today's assessment. Every card is one observation.</p>
+    <div class="corkboard reveal d1" id="tl"></div>
+  </div>
+</section>
+
+<!-- ============ STYLOMETRY ============ -->
+<section id="s-stylometry">
+  <div class="wrap">
+    <div class="eyebrow">chapter six</div>
+    <h2 class="reveal">do these two write the same way?</h2>
+    <p class="lead reveal d1">Edit either note and run it. It checks sentence shape, function words, punctuation habits and repeated letter-triples — a hint, never a verdict.</p>
+    <div class="grid g2 reveal d1">
+      <div class="grid" style="gap:14px">
+        <div><span class="tag pink" style="margin-bottom:8px;display:inline-block">sample A · TS-00114</span><textarea id="txtA"></textarea></div>
+        <div><span class="tag" style="margin-bottom:8px;display:inline-block">sample B · TS-00207</span><textarea id="txtB"></textarea></div>
+        <button class="btn" id="runstyl" style="justify-self:start">✦ run the comparison</button>
+      </div>
+      <div class="card rot-l" style="padding:20px">
+        <div class="gauge"><svg viewBox="0 0 200 118" id="gaugesvg"></svg>
+          <div class="v" id="gaugeval" style="color:var(--ink2)">—</div>
+          <div class="c" id="gaugecls" style="color:var(--ink2)">not run yet</div></div>
+        <div id="feats" style="margin-top:16px;font-size:12.5px;color:var(--ink2)">run it to see which features drive the score.</div>
+        <div class="note" style="margin-top:15px">this similarity is a signal, not a verdict — it never establishes common authorship on its own.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REPORT ============ -->
+<section id="s-report">
+  <div class="wrap">
+    <div class="eyebrow">chapter seven</div>
+    <h2 class="reveal">package it up</h2>
+    <p class="lead reveal d1">The case folds into a document with the summary, the scores, the contradictions and the limitations — plus CSV and JSON for the raw records.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap" class="reveal d1">
+      <button class="btn" id="genreport">✎ generate the report</button>
+      <button class="btn ghost" id="expcsv">export CSV</button>
+      <button class="btn ghost" id="expjson">export JSON</button>
+    </div>
+    <div class="card reveal d2 rot-r" style="padding:20px;margin-top:18px">
+      <div class="runlog" id="runlog">idle — press generate and I'll narrate the build, out loud too.</div>
+    </div>
+    <div class="card doc" id="doc"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="tag butter">★ everything here is synthetic — no real people, no real infrastructure</span>
+    <p style="margin-top:14px">DARKTRACE · narrated by Mira · built for authorized cybersecurity research, threat intelligence and academic investigation.</p>
+  </div>
+</footer>
+</main>
+
+<!-- ============ MIRA ============ -->
+<div id="mira">
+  <div class="miraholder" id="miraholder" title="tap me!">
+    <span class="notewave" style="left:6px;top:4px">♪</span>
+    <span class="notewave" style="left:96px;top:14px;animation-delay:.5s">♫</span>
+    <svg viewBox="0 0 160 180">
+      <defs>
+        <radialGradient id="cheek" cx="50%" cy="50%"><stop offset="0" stop-color="#FF9BB6" stop-opacity=".85"/><stop offset="1" stop-color="#FF9BB6" stop-opacity="0"/></radialGradient>
+        <clipPath id="eyeL"><ellipse cx="66" cy="86" rx="10" ry="11"/></clipPath>
+        <clipPath id="eyeR"><ellipse cx="96" cy="86" rx="10" ry="11"/></clipPath>
+      </defs>
+      <g fill="#2E2126">
+        <ellipse cx="80" cy="96" rx="52" ry="58"/>
+        <circle cx="34" cy="66" r="15"/><circle cx="126" cy="66" r="15"/>
+        <circle cx="26" cy="96" r="16"/><circle cx="134" cy="96" r="16"/>
+        <circle cx="32" cy="126" r="15"/><circle cx="128" cy="126" r="15"/>
+        <circle cx="44" cy="148" r="13"/><circle cx="116" cy="148" r="13"/>
+        <circle cx="52" cy="40" r="17"/><circle cx="80" cy="30" r="20"/><circle cx="108" cy="40" r="17"/>
+      </g>
+      <path d="M44 168c4-18 16-27 36-27s32 9 36 27z" fill="#4A3550"/>
+      <path d="M70 128h20v20a10 10 0 0 1-20 0z" fill="#EFC09A"/>
+      <ellipse cx="80" cy="92" rx="34" ry="39" fill="#F8D3B0"/>
+      <g fill="#2E2126">
+        <circle cx="52" cy="58" r="16"/><circle cx="72" cy="48" r="17"/>
+        <circle cx="94" cy="48" r="17"/><circle cx="112" cy="60" r="15"/>
+        <circle cx="44" cy="76" r="13"/><circle cx="118" cy="78" r="13"/>
+      </g>
+      <ellipse cx="58" cy="102" rx="11" ry="7" fill="url(#cheek)"/>
+      <ellipse cx="102" cy="102" rx="11" ry="7" fill="url(#cheek)"/>
+      <g>
+        <ellipse cx="66" cy="86" rx="10" ry="11" fill="#fff"/>
+        <ellipse cx="96" cy="86" rx="10" ry="11" fill="#fff"/>
+        <g id="pupils">
+          <circle cx="68" cy="85" r="6.4" fill="#33242B"/><circle cx="98" cy="85" r="6.4" fill="#33242B"/>
+          <circle cx="70.4" cy="82.4" r="2.2" fill="#fff"/><circle cx="100.4" cy="82.4" r="2.2" fill="#fff"/>
+        </g>
+        <g fill="#F8D3B0">
+          <rect class="eyelid" x="56" y="75" width="20" height="12" clip-path="url(#eyeL)"/>
+          <rect class="eyelid" x="86" y="75" width="20" height="12" clip-path="url(#eyeR)"/>
+        </g>
+        <path d="M57 72c4-3 11-3 15 0M88 72c4-3 11-3 15 0" stroke="#3B2A31" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      </g>
+      <path d="M80 94c2 2 2 3 0 4" stroke="#D89C78" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <ellipse class="mouth" cx="81" cy="108" rx="6.5" ry="4.5" fill="#D4536F"/>
+      <path d="M66 146c6 8 22 8 28 0" stroke="#E7C86A" stroke-width="2" fill="none"/>
+      <circle cx="80" cy="152" r="2.6" fill="#E7C86A"/>
+    </svg>
+  </div>
+  <div class="bubble" id="bubble">
+    <div class="caret"></div>
+    <div class="who">Mira ✎ your guide</div>
+    <div id="bubbletext">hi! tap the speaker so I can actually talk 🔊</div>
+    <div class="ctrls">
+      <button class="tiny" id="bprev">‹ back</button>
+      <button class="tiny on" id="bnext">next ›</button>
+      <button class="tiny" id="bvoice">🔊 hear me</button>
+      <button class="tiny" id="bhide">shh</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ===================== hero letters ===================== */
+(function(){
+  const t = document.getElementById("bigtitle"), s = "DARKTRACE";
+  t.innerHTML = [...s].map((c,i)=>`<span class="ch" style="animation-delay:${i*60}ms">${c}</span>`).join("");
+})();
+
+/* ===================== cursor sparkle trail ===================== */
+(function(){
+  if(RM) return;
+  const glyphs = ["✦","✧","·","♡"];
+  let last = 0;
+  addEventListener("mousemove", ev=>{
+    const now = performance.now(); if(now-last < 70) return; last = now;
+    const s = document.createElement("span");
+    s.className = "spark"; s.textContent = glyphs[Math.floor(Math.random()*glyphs.length)];
+    s.style.left = (ev.clientX-6)+"px"; s.style.top = (ev.clientY-6)+"px";
+    s.style.color = ["#F3719C","#A88BE0","#3D9BC9","#E0A400"][Math.floor(Math.random()*4)];
+    document.body.appendChild(s);
+    setTimeout(()=> s.remove(), 820);
+  });
+})();
+
+/* ===================== stickers (click for a wobble + toast) ===================== */
+const STICK = [
+  ["✿","6%","12%",42,-8],["★","88%","16%",36,10],["🍓","12%","72%",30,6],["♡","92%","62%",34,-12],
+  ["🐚","78%","8%",30,14],["✦","4%","44%",26,4],["🌿","84%","86%",30,-6],["★","22%","26%",23,8]
+];
+document.getElementById("stickers").innerHTML = STICK.map(([g,l,t,s,r],i)=>
+  `<div class="sticker" style="left:${l};top:${t};font-size:${s}px;--r:${r}deg;animation-delay:${i*0.7}s" data-i="${i}">${g}</div>`).join("");
+const STICKER_LINES = ["hi! I'm just decoration, but thank you for noticing me.","tap tap. yep, still just a doodle.","psst — the good stuff is further down the page.","✦ collect all 8, or don't, no pressure ✦"];
+document.querySelectorAll(".sticker").forEach((el,i)=> el.onclick = ()=> toast("✨", STICKER_LINES[i%STICKER_LINES.length]));
+
+/* ===================== reveal on scroll ===================== */
+const io = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting) e.target.classList.add("in"); }),
+  {threshold:.16, rootMargin:"0px 0px -8% 0px"});
+document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+
+/* ===================== achievement toasts ===================== */
+const seen = new Set();
+function toast(emoji, msg, key){
+  if(key){ if(seen.has(key)) return; seen.add(key); }
+  const box = document.getElementById("toasts");
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.innerHTML = `<span class="em">${emoji}</span><span>${msg}</span>`;
+  box.appendChild(t);
+  requestAnimationFrame(()=> t.classList.add("show"));
+  setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=> t.remove(), 500); }, 3600);
+}
+
+/* ===================== sticky-note pin facts ===================== */
+const FACTS = {
+  "fact-about":["pink","This whole case has one rule: never turn a hunch into a headline."],
+  "fact-collect":["mint","A single observation is basically a sticky note with a timestamp on it."],
+  "fact-explain":["sky","If a score can't explain itself, this workbench won't show it."],
+  "fact-rated":["butter","Even a PRIMARY source gets double-checked — labels aren't proof."],
+  "fact-graph":["pink","Real analysts call this 'link analysis.' We just call it the board."],
+  "fact-timeline":["mint","Reading the timeline backwards is a great way to spot a rushed cover story."]
+};
+let openPin = null;
+document.querySelectorAll(".pin").forEach(p=>{
+  const key = p.dataset.fact, [cls,text] = FACTS[key] || ["pink","..."];
+  const note = document.createElement("div");
+  note.className = "stickynote "+cls;
+  note.innerHTML = `<span class="x">✕</span>${text}`;
+  document.body.appendChild(note);
+  const place = ()=>{
+    const r = p.getBoundingClientRect();
+    note.style.left = Math.min(window.innerWidth-236, r.left + window.scrollX - 20) + "px";
+    note.style.top = (r.bottom + window.scrollY + 10) + "px";
+  };
+  p.onclick = (ev)=>{
+    ev.stopPropagation();
+    if(openPin && openPin!==note) openPin.classList.remove("show");
+    place(); note.classList.toggle("show"); openPin = note.classList.contains("show") ? note : null;
+    toast("📌","found a pinned note!","pin-"+key);
+  };
+  note.querySelector(".x").onclick = ()=> note.classList.remove("show");
+});
+document.addEventListener("click", ()=>{ if(openPin){ openPin.classList.remove("show"); openPin=null; } });
+
+/* ===================== DATA (synthetic) ===================== */
+const TYPES = {
+  ACTOR:{c:"#F3719C",r:15,label:"actor"}, ALIAS:{c:"#E8895A",r:9,label:"alias"},
+  PGP:{c:"#3FAE85",r:10,label:"PGP key"}, WALLET:{c:"#E0A400",r:10,label:"wallet"},
+  ONION:{c:"#A88BE0",r:10,label:"onion service"}, DOMAIN:{c:"#3D9BC9",r:9,label:"domain"},
+  IP:{c:"#2FA8AF",r:8,label:"IP address"}, MARKET:{c:"#D6456A",r:11,label:"marketplace"},
+  FORUM:{c:"#7C7396",r:9,label:"forum"}, INFRA:{c:"#9BA020",r:9,label:"infrastructure"},
+  TEXT:{c:"#3F9E85",r:8,label:"text sample"}
+};
+const ACTORS = [
+  {id:"ACT-00017",name:"ShadowFox",conf:82,cls:"VERY HIGH",first:"2024-03-12",last:"2026-08-19",aliases:3,ev:9,src:5},
+  {id:"ACT-00021",name:"Raven",conf:67,cls:"HIGH",first:"2024-06-02",last:"2026-07-04",aliases:2,ev:7,src:4},
+  {id:"ACT-00034",name:"NullByte",conf:54,cls:"MODERATE",first:"2025-01-18",last:"2026-05-27",aliases:2,ev:5,src:3},
+  {id:"ACT-00042",name:"GhostVendor",conf:71,cls:"HIGH",first:"2024-11-09",last:"2026-08-02",aliases:2,ev:8,src:4},
+  {id:"ACT-00055",name:"Lacewing",conf:38,cls:"MODERATE",first:"2025-07-21",last:"2026-06-15",aliases:1,ev:4,src:2},
+  {id:"ACT-00061",name:"Ferrymark",conf:24,cls:"LOW",first:"2026-02-03",last:"2026-08-11",aliases:1,ev:3,src:2}
+];
+const nodes = [], edges = [];
+let nid = 0;
+function N(type,label,extra){ const n=Object.assign({i:nid++,type,label,x:0,y:0,vx:0,vy:0},extra||{}); nodes.push(n); return n; }
+function E(a,b,rel,conf,ev){ edges.push({a:a.i,b:b.i,rel,conf,ev:ev||["EV-000"+(20+edges.length)]}); }
+const AN = {};
+ACTORS.forEach(a=> AN[a.name] = N("ACTOR",a.name,{actor:a,conf:a.conf}));
+function attach(name,specs){ const h=AN[name]; specs.forEach(s=>{ const n=N(s[0],s[1],{conf:s[3]}); E(h,n,s[2],s[3]); }); }
+attach("ShadowFox",[["ALIAS","SF_vendor","USES",92],["ALIAS","shadow.fox","USES",78],["ALIAS","sfx_","USES",55],
+  ["PGP","4F2A…E08D","CONTROLS",95],["WALLET","bc1q…6f2c9","CONTROLS",88],["WALLET","bc1q…a19e4","CONTROLS",64],
+  ["ONION","nm7x…onion","OBSERVED_ON",72],["MARKET","NightMarket","POSTED_ON",90],["FORUM","Havenport","POSTED_ON",76],
+  ["INFRA","cert 9B41…F2","HOSTED_ON",68],["TEXT","TS-00114","OBSERVED_ON",61]]);
+attach("Raven",[["ALIAS","raven_x","USES",90],["ALIAS","corvid","USES",62],["PGP","A19E…71CC","CONTROLS",84],
+  ["WALLET","bc1q…d7710","CONTROLS",70],["DOMAIN","ravenmail.example","ASSOCIATED_WITH",58],
+  ["FORUM","Havenport","POSTED_ON",81],["TEXT","TS-00207","OBSERVED_ON",66],["IP","198.51.100.77","OBSERVED_ON",44]]);
+attach("NullByte",[["ALIAS","null_b","USES",86],["ALIAS","0xNB","USES",59],["PGP","C7D1…5A22","CONTROLS",73],
+  ["ONION","nb3k…onion","OBSERVED_ON",64],["MARKET","Ashgate","POSTED_ON",70],["INFRA","nginx default banner","HOSTED_ON",52]]);
+attach("GhostVendor",[["ALIAS","gv_supply","USES",88],["ALIAS","ghostv","USES",67],["WALLET","bc1q…6f2c9","CONTROLS",83],
+  ["PGP","4F2A…E08D","CONTROLS",79],["MARKET","NightMarket","POSTED_ON",85],["MARKET","Ashgate","POSTED_ON",61],
+  ["DOMAIN","gv-supply.example","ASSOCIATED_WITH",57],["INFRA","cert 9B41…F2","HOSTED_ON",74]]);
+attach("Lacewing",[["ALIAS","lcw","USES",74],["WALLET","bc1q…a19e4","CONTROLS",49],
+  ["FORUM","Driftwood","POSTED_ON",63],["DOMAIN","lacewing.example","ASSOCIATED_WITH",41]]);
+attach("Ferrymark",[["ALIAS","ferry_m","USES",69],["IP","203.0.113.19","OBSERVED_ON",37],
+  ["FORUM","Driftwood","POSTED_ON",45],["ONION","fm9q…onion","OBSERVED_ON",33]]);
+(function dedupe(){
+  const seen2=new Map(), remap=new Map(), keep=[];
+  nodes.forEach(n=>{ const k=n.type+"|"+n.label;
+    if(n.type==="ACTOR"||!seen2.has(k)){ seen2.set(k,n); keep.push(n); } else remap.set(n.i,seen2.get(k).i); });
+  edges.forEach(e=>{ if(remap.has(e.a))e.a=remap.get(e.a); if(remap.has(e.b))e.b=remap.get(e.b); });
+  nodes.length=0; keep.forEach((n,ix)=>{ remap.set(n.i,ix); nodes.push(n); });
+  edges.forEach(e=>{ e.a=remap.get(e.a); e.b=remap.get(e.b); });
+  nodes.forEach((n,ix)=> n.i=ix);
+})();
+function A0(n){ return nodes.find(x=>x.type==="ACTOR"&&x.label===n); }
+E(A0("ShadowFox"),A0("GhostVendor"),"POSSIBLY_SAME_AS",82,["EV-00042","EV-00051","EV-00063"]);
+E(A0("Raven"),A0("Lacewing"),"SIMILAR_TO",46,["EV-00077"]);
+E(A0("NullByte"),A0("Ferrymark"),"SIMILAR_TO",31,["EV-00081"]);
+E(A0("ShadowFox"),A0("Raven"),"ASSOCIATED_WITH",52,["EV-00069"]);
+const degree = new Array(nodes.length).fill(0);
+edges.forEach(e=>{ degree[e.a]++; degree[e.b]++; });
+
+/* ===================== ingest belt ===================== */
+(function belt(){
+  const items = [["HANDLE","#FFC2D6"],["PGP_KEY","#C6F0DE"],["WALLET","#FFE8AE"],["ONION_SERVICE","#DCCBFF"],
+    ["CERTIFICATE","#C3E8F8"],["TEXT_SAMPLE","#FFD9CC"],["FORUM_POST","#E4E7B8"],["IP_ADDRESS","#CFF0F2"]];
+  const box = document.getElementById("belt");
+  box.innerHTML = items.map(([t,c],i)=>
+    `<div class="flyer" style="top:${10+i*22}px;background:${c};animation-delay:${i*0.85}s">${t}</div>`).join("")
+    + `<div class="jar">
+        <svg width="96" height="120" viewBox="0 0 96 120">
+          <path d="M22 34h52v66a14 14 0 0 1-14 14H36a14 14 0 0 1-14-14z" fill="rgba(255,255,255,.8)" stroke="#4A3550" stroke-width="2.5"/>
+          <rect x="16" y="22" width="64" height="14" rx="4" fill="#F3719C" stroke="#4A3550" stroke-width="2"/>
+          <circle cx="38" cy="86" r="7" fill="#E0A400"/><circle cx="56" cy="92" r="6" fill="#3FAE85"/>
+          <circle cx="48" cy="72" r="5" fill="#3D9BC9"/><circle cx="60" cy="76" r="4" fill="#F3719C"/>
+        </svg></div>`;
+})();
+
+/* ===================== graph ===================== */
+const cv=document.getElementById("gcanvas"), ctx=cv.getContext("2d");
+let W=0,H=0,DPR=1,cam={x:0,y:0,z:1},hover=null,sel=null,drag=null,pan=null,alpha=1,minConf=40;
+const hidden=new Set();
+function initGraph(){
+  nodes.forEach((n,ix)=>{ const a=ix/nodes.length*Math.PI*2, R=n.type==="ACTOR"?110:250;
+    n.x=Math.cos(a)*R+(Math.random()-.5)*40; n.y=Math.sin(a)*R+(Math.random()-.5)*40; });
+  document.getElementById("filters").innerHTML = Object.entries(TYPES).map(([k,v])=>
+    `<label style="--kc:${v.c}"><input type="checkbox" checked data-t="${k}">${v.label}</label>`).join("");
+  document.querySelectorAll("#filters input").forEach(cb=> cb.onchange=()=>{
+    cb.checked?hidden.delete(cb.dataset.t):hidden.add(cb.dataset.t); });
+  document.getElementById("confrange").oninput = e=>{
+    minConf=+e.target.value; document.getElementById("confval").textContent=minConf; };
+  document.getElementById("replay").onclick = ()=>{
+    nodes.forEach(n=>{ n.x+=(Math.random()-.5)*320; n.y+=(Math.random()-.5)*320; n.vx=n.vy=0; }); alpha=1;
+    toast("🔀","board shuffled — same evidence, new layout");
+  };
+  addEventListener("resize", size); size(); bind(); requestAnimationFrame(loop);
+}
+function size(){ const r=cv.getBoundingClientRect(); DPR=Math.min(devicePixelRatio||1,2);
+  W=r.width; H=r.height; cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
+const vis=n=>!hidden.has(n.type);
+const visE=e=>e.conf>=minConf && vis(nodes[e.a]) && vis(nodes[e.b]);
+function physics(){
+  if(alpha<0.004) return; alpha*=0.993;
+  for(let i=0;i<nodes.length;i++){ const a=nodes[i];
+    for(let j=i+1;j<nodes.length;j++){ const b=nodes[j];
+      let dx=b.x-a.x, dy=b.y-a.y, d2=dx*dx+dy*dy;
+      if(d2<1){d2=1;dx=Math.random();dy=Math.random();}
+      if(d2>100000) continue;
+      const d=Math.sqrt(d2), f=3000/d2, fx=dx/d*f, fy=dy/d*f;
+      a.vx-=fx;a.vy-=fy;b.vx+=fx;b.vy+=fy; } }
+  edges.forEach(e=>{ const a=nodes[e.a], b=nodes[e.b];
+    const dx=b.x-a.x, dy=b.y-a.y, d=Math.max(1,Math.hypot(dx,dy));
+    const rest = e.rel==="POSSIBLY_SAME_AS"?200:(a.type==="ACTOR"||b.type==="ACTOR"?112:160);
+    const f=(d-rest)*0.013, fx=dx/d*f, fy=dy/d*f;
+    a.vx+=fx;a.vy+=fy;b.vx-=fx;b.vy-=fy; });
+  nodes.forEach(n=>{ n.vx-=n.x*0.0024; n.vy-=n.y*0.0024;
+    if(drag&&drag.n===n) return;
+    n.x+=(n.vx*=0.82)*alpha*1.6; n.y+=(n.vy*=0.82)*alpha*1.6; });
+}
+const S=n=>({x:(n.x+cam.x)*cam.z+W/2, y:(n.y+cam.y)*cam.z+H/2});
+const F=(px,py)=>({x:(px-W/2)/cam.z-cam.x, y:(py-H/2)/cam.z-cam.y});
+function loop(t){ physics(); draw(t); requestAnimationFrame(loop); }
+function draw(t){
+  ctx.clearRect(0,0,W,H);
+  const nb=new Set();
+  if(sel!=null) edges.forEach(e=>{ if(e.a===sel)nb.add(e.b); if(e.b===sel)nb.add(e.a); });
+  edges.forEach((e,ix)=>{
+    if(!visE(e)) return;
+    const a=S(nodes[e.a]), b=S(nodes[e.b]);
+    const foc = sel!=null && (e.a===sel||e.b===sel), dim = sel!=null && !foc;
+    const inf = e.rel==="POSSIBLY_SAME_AS"||e.rel==="SIMILAR_TO";
+    ctx.save();
+    ctx.globalAlpha = dim?.08:(foc?.95:.42);
+    ctx.strokeStyle = inf?(e.conf>=60?"#D6456A":"#E0A400"):"#B9A9CC";
+    ctx.lineWidth = foc?3:(inf?2.4:1.6); ctx.lineCap="round";
+    if(inf) ctx.setLineDash([7,7]);
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    ctx.restore();
+    if(!RM && !dim && (foc||inf)){
+      const p=((t/1500)+ix*0.19)%1, px=a.x+(b.x-a.x)*p, py=a.y+(b.y-a.y)*p;
+      ctx.save(); ctx.fillStyle=inf?"#D6456A":"#3FAE85";
+      ctx.beginPath(); ctx.arc(px,py,3,0,7); ctx.fill(); ctx.restore(); }
+  });
+  nodes.forEach(n=>{
+    if(!vis(n)) return;
+    const s=S(n), T=TYPES[n.type], isS=sel===n.i, isN=nb.has(n.i), isH=hover===n.i;
+    const dim = sel!=null && !isS && !isN;
+    const r = T.r*cam.z*(isS?1.4:1)*(isH?1.15:1)*(1+(n.type==="ACTOR"&&!RM?Math.sin(t/720+n.i)*0.045:0));
+    ctx.save(); ctx.globalAlpha = dim?.2:1;
+    ctx.fillStyle = T.c; ctx.beginPath(); ctx.arc(s.x,s.y,r,0,7); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.5)";
+    ctx.beginPath(); ctx.arc(s.x-r*.3,s.y-r*.32,r*.28,0,7); ctx.fill();
+    ctx.lineWidth=2.4; ctx.strokeStyle="#4A3550";
+    ctx.beginPath(); ctx.arc(s.x,s.y,r,0,7); ctx.stroke();
+    if(cam.z>.72 || n.type==="ACTOR" || isS || isH){
+      ctx.globalAlpha = dim?.22:1;
+      ctx.font = (n.type==="ACTOR"?"600 14px":"500 11.5px")+" Fredoka, sans-serif";
+      ctx.textAlign="center"; ctx.lineWidth=3.5; ctx.strokeStyle="rgba(251,243,231,.95)";
+      ctx.strokeText(n.label,s.x,s.y+r+15); ctx.fillStyle="#4A3550";
+      ctx.fillText(n.label,s.x,s.y+r+15); }
+    ctx.restore();
+  });
+}
+function pick(px,py){
+  for(let i=nodes.length-1;i>=0;i--){ const n=nodes[i]; if(!vis(n)) continue;
+    const s=S(n), r=TYPES[n.type].r*cam.z+7;
+    if((px-s.x)**2+(py-s.y)**2<r*r) return n; }
+  return null;
+}
+function bind(){
+  const tip=document.getElementById("gtip");
+  const pos=ev=>{ const r=cv.getBoundingClientRect(); const p=ev.touches?ev.touches[0]:ev;
+    return [p.clientX-r.left, p.clientY-r.top]; };
+  const down=ev=>{ const [px,py]=pos(ev); const n=pick(px,py);
+    if(n){ const w=F(px,py); drag={n,dx:w.x-n.x,dy:w.y-n.y}; select(n.i); } else pan={x:px,y:py}; };
+  const move=ev=>{ const [px,py]=pos(ev);
+    if(drag){ const w=F(px,py); drag.n.x=w.x-drag.dx; drag.n.y=w.y-drag.dy; alpha=Math.max(alpha,.2); return; }
+    if(pan){ cam.x+=(px-pan.x)/cam.z; cam.y+=(py-pan.y)/cam.z; pan={x:px,y:py}; return; }
+    const n=pick(px,py); hover=n?n.i:null; cv.style.cursor=n?"pointer":"grab";
+    if(n){ tip.style.opacity=1; tip.style.left=(px+14)+"px"; tip.style.top=(py+14)+"px";
+      tip.innerHTML=`<span style="color:${TYPES[n.type].c}">${TYPES[n.type].label}</span> · ${n.label}`; }
+    else tip.style.opacity=0; };
+  const up=()=>{ if(drag) toast("🖇️","node repositioned — the physics settle on their own","drag-node"); drag=null; pan=null; };
+  cv.addEventListener("mousedown",down); cv.addEventListener("mousemove",move);
+  addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",down,{passive:true}); cv.addEventListener("touchmove",move,{passive:true});
+  cv.addEventListener("touchend",up);
+  cv.addEventListener("wheel",ev=>{ ev.preventDefault();
+    cam.z=Math.max(.4,Math.min(2.6,cam.z*(ev.deltaY<0?1.12:.89))); },{passive:false});
+  cv.addEventListener("dblclick",()=>{ sel=null; inspector(null); });
+}
+const NOTE={USES:"Alias seen in posts attributed to this entity.",CONTROLS:"Identifier published by this entity.",
+  POSTED_ON:"Account activity recorded on this platform.",ASSOCIATED_WITH:"Co-occurs in an authorized dataset record.",
+  OBSERVED_ON:"Captured during an authorized collection pass.",HOSTED_ON:"Shared infrastructure metadata.",
+  SIMILAR_TO:"Style and behaviour overlap. Unconfirmed.",POSSIBLY_SAME_AS:"Repeated identifier reuse. Needs a human."};
+function select(i){ sel=i; inspector(nodes[i]); toast("🔍","opened "+nodes[i].label,"select-node"); }
+function inspector(n){
+  const box=document.getElementById("inspector");
+  if(!n){ box.innerHTML=`<div class="ttl">tap a bubble ✿</div>
+    <p style="font-size:12.5px;color:var(--ink2);margin:8px 0 0">every node opens its identifiers, relationships and the evidence behind each one.</p>`; return; }
+  const T=TYPES[n.type];
+  const rels=edges.filter(e=>e.a===n.i||e.b===n.i).sort((a,b)=>b.conf-a.conf).map(e=>{
+    const o=nodes[e.a===n.i?e.b:e.a];
+    return `<div class="rel" data-i="${o.i}"><div class="t">${e.rel.replace(/_/g," ").toLowerCase()}</div>
+      <div style="font-weight:600">${o.label}</div>
+      <div style="color:var(--ink2);font-size:11px">${e.ev.join(" · ")} · confidence ${e.conf}</div>
+      <div style="color:var(--ink2);font-size:11px;opacity:.85">${NOTE[e.rel]||""}</div></div>`; }).join("");
+  box.innerHTML = `<span class="tag" style="border-color:${T.c};color:${T.c}">${T.label}</span>
+    <div class="ttl" style="margin-top:8px">${n.label}</div>
+    <span class="tag ${n.type==="ACTOR"?"butter":"mint"}" style="margin-top:8px;display:inline-flex">${n.type==="ACTOR"?"analytical inference":"observed fact"}</span>
+    <div class="kv"><span>entity</span><b>ENT-${1000+n.i}</b>
+      <span>first seen</span><b>${n.actor?n.actor.first:"2025-02-11"}</b>
+      <span>last seen</span><b>${n.actor?n.actor.last:"2026-08-04"}</b>
+      <span>confidence</span><b>${n.conf||70} / 100</b>
+      <span>dataset</span><b style="color:#8A6A12">SYNTHETIC</b></div>
+    <h4 style="font-family:var(--hand);font-size:14px;color:var(--red);margin:0 0 7px">relationships · ${edges.filter(e=>e.a===n.i||e.b===n.i).length}</h4>
+    ${rels}`;
+  box.querySelectorAll(".rel").forEach(r=> r.onclick=()=>select(+r.dataset.i));
+}
+
+/* ===================== actors ===================== */
+const cc = c=> c>=80?"#D6456A":c>=60?"#E8895A":c>=30?"#E0A400":"#3FAE85";
+document.getElementById("actorgrid").innerHTML = ACTORS.map(a=>`
+  <div class="card acard" data-id="${a.id}">
+    <div class="top"><div class="blob" style="background:${cc(a.conf)}">${a.name.slice(0,2)}</div>
+      <div><div style="font-family:var(--disp);font-weight:600;font-size:17px">${a.name}</div>
+      <div style="font-size:11.5px;color:var(--ink2)">${a.id}</div></div></div>
+    <div class="meter"><i data-w="${a.conf}" style="background:${cc(a.conf)}"></i></div>
+    <div class="mini"><span>${a.aliases} aliases · ${a.ev} evidence</span><span style="font-weight:700">${a.conf}</span></div>
+  </div>`).join("");
+new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting)
+  document.querySelectorAll(".meter i").forEach(i=> i.style.width=i.dataset.w+"%"); }),{threshold:.3})
+  .observe(document.getElementById("actorgrid"));
+document.querySelectorAll(".acard").forEach(c=> c.onclick=()=> openActor(c.dataset.id));
+
+function gaugeSVG(svg,val,color){
+  const cx=100,cy=104,r=80, len=Math.PI*r;
+  const p=a=>[cx+r*Math.cos(Math.PI*(1-a)), cy-r*Math.sin(Math.PI*(1-a))];
+  const [x1,y1]=p(0),[x2,y2]=p(1);
+  svg.innerHTML=`<path d="M${x1} ${y1} A${r} ${r} 0 1 1 ${x2} ${y2}" stroke="#F2ECF8" stroke-width="15" fill="none" stroke-linecap="round"/>
+    <path id="gp" d="M${x1} ${y1} A${r} ${r} 0 1 1 ${x2} ${y2}" stroke="${color}" stroke-width="15" fill="none" stroke-linecap="round"
+      stroke-dasharray="${len}" stroke-dashoffset="${len}"/>`;
+  const el=svg.querySelector("#gp");
+  setTimeout(()=>{ el.style.transition="stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)";
+    el.style.strokeDashoffset=len*(1-val/100); },160);
+}
+function openActor(id){
+  const a=ACTORS.find(x=>x.id===id), node=A0(a.name);
+  const rels=edges.filter(e=>e.a===node.i||e.b===node.i);
+  const sup=[["✓","PGP fingerprint reused across two vendor profiles","EV-00042"],
+    ["✓","Wallet bc1q…6f2c9 controlled by both identities","EV-00051"],
+    ["✓","Certificate 9B41…F2 on both infrastructure records","EV-00063"],
+    ["✓","Activity windows overlap by 71%","EV-00058"],
+    ["✓","Handle shapes are close (SF_vendor / sfx_)","EV-00047"]];
+  const con=[["!","Marketplace registration dates differ by 14 months","EV-00070"],
+    ["!","Shipping-origin claims are inconsistent","EV-00072"]];
+  const d=document.getElementById("actordetail");
+  d.innerHTML=`<div class="card" style="padding:24px">
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <div class="blob" style="background:${cc(a.conf)};width:54px;height:54px;font-size:16px">${a.name.slice(0,2)}</div>
+      <div><h2 style="margin:0">${a.name}</h2>
+        <div style="color:var(--ink2);font-size:13.5px">${a.id} · first seen ${a.first} · last seen ${a.last} · ${a.src} sources</div></div>
+      <button class="tiny" id="closeact" style="margin-left:auto">close ✕</button></div>
+    <div class="grid g2" style="margin-top:20px">
+      <div>
+        <h3>associated identifiers</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+          ${rels.map(e=>{const o=nodes[e.a===node.i?e.b:e.a];
+            return `<span class="tag" style="border-color:${TYPES[o.type].c};color:${TYPES[o.type].c}">${o.label}</span>`}).join("")}
+        </div>
+        <h3>what supports it</h3>
+        ${sup.map(([k,t,e])=>`<div class="evline"><span style="color:var(--mint);font-weight:700">${k}</span><span style="flex:1">${t}</span><span style="opacity:.65">${e}</span></div>`).join("")}
+        <h3 style="margin-top:16px">what argues against it</h3>
+        ${con.map(([k,t,e])=>`<div class="evline"><span style="color:var(--butter);font-weight:700">${k}</span><span style="flex:1">${t}</span><span style="opacity:.65">${e}</span></div>`).join("")}
+      </div>
+      <div>
+        <div class="gauge"><svg viewBox="0 0 200 118" id="ag"></svg>
+          <div class="v" style="color:${cc(a.conf)}">${a.conf}</div>
+          <div class="c" style="color:${cc(a.conf)}">${a.cls}</div></div>
+        <div id="bd" style="margin-top:13px"></div>
+        <div class="note" style="margin-top:15px">this is analytical confidence in the evidence — not a probability that any real person did anything, and never a confirmed identity.</div>
+        <button class="btn ghost" id="toGraph" style="margin-top:13px">see it on the board ↗</button>
+      </div></div></div>`;
+  gaugeSVG(document.getElementById("ag"),a.conf,cc(a.conf));
+  const bd=[["identifier reuse",26],["infrastructure",18],["PGP correlation",16],["wallet reuse",12],
+    ["stylometry",9],["behaviour",7],["timing",6]];
+  document.getElementById("bd").innerHTML=bd.map(([n,v])=>
+    `<div class="featline"><span style="width:106px">${n}</span><span class="tr"><i data-w="${Math.min(100,v*3.4)}"></i></span><b>+${v}</b></div>`).join("");
+  setTimeout(()=> d.querySelectorAll(".tr i").forEach(i=> i.style.width=i.dataset.w+"%"),150);
+  document.getElementById("closeact").onclick=()=> d.innerHTML="";
+  document.getElementById("toGraph").onclick=()=>{
+    document.getElementById("s-graph").scrollIntoView({behavior:"smooth"});
+    setTimeout(()=>{ select(node.i); cam.x=-node.x; cam.y=-node.y; cam.z=1.2; },600); };
+  d.scrollIntoView({behavior:"smooth",block:"nearest"});
+  toast("🕵️","first case file opened","first-actor");
+  say(`${a.name} scores ${a.conf} out of 100. We call that ${a.cls.toLowerCase()} confidence. Look at both columns — what supports it, and the two contradictions we haven't resolved yet.`);
+}
+
+/* ===================== timeline (corkboard) ===================== */
+const TLE=[["2024-03-12","First alias spotted","Handle SF_vendor appears on a NightMarket vendor directory.","#F3719C"],
+["2024-05-04","PGP fingerprint published","4F2A…E08D listed on the vendor profile and archived.","#3FAE85"],
+["2024-08-22","Wallet associated","bc1q…6f2c9 posted as a payment address on two listings.","#E0A400"],
+["2025-01-09","Second marketplace account","A profile on Ashgate reuses the same fingerprint.","#D6456A"],
+["2025-04-12","Certificate reuse","Certificate 9B41…F2 shows up in two infrastructure records.","#9BA020"],
+["2025-09-30","New alias appears","sfx_ registers on Havenport days after the old account goes quiet.","#E8895A"],
+["2026-03-17","Style similarity flagged","TS-00114 and TS-00207 return 78% surface similarity. Signal only.","#3F9E85"],
+["2026-08-19","Raised to very high","Combined reuse, infrastructure and timing evidence. Two contradictions still open.","#A88BE0"]];
+document.getElementById("tl").innerHTML = TLE.map(([d,t,s,c],i)=>
+  `<div class="tlrow" style="--kc:${c};transform:rotate(${(i%2?1:-1)*(1+ (i%3))}deg)"><div class="card">
+     <div class="d">${d}</div><div class="t">${t}</div><div class="s">${s}</div></div></div>`).join("");
+const tio=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){
+  const rows=[...document.querySelectorAll(".tlrow")];
+  rows.forEach((r,ix)=> setTimeout(()=>r.classList.add("in"), RM?0:ix*110));
+  toast("📅","timeline unpinned — read it in order","timeline"); } }),{threshold:.1});
+tio.observe(document.getElementById("tl"));
+
+/* ===================== stylometry ===================== */
+document.getElementById("txtA").value="vendor note: stock is limited this week, orders go out in the order they land. if you need something specific, message first — i do not reserve without payment. escrow only, no exceptions. feedback matters to me, so if something arrives wrong, tell me before you leave a rating and i will make it right.";
+document.getElementById("txtB").value="quick note on shipping: stock is thin this week and orders ship in the order received. message first if you want something specific — nothing is reserved without payment. escrow only, no exceptions. if an order arrives wrong please tell me before rating, and i will sort it out.";
+const FEAT=["sentence length","function words","punctuation","letter triples","vocabulary spread","word length"];
+function fv(t){
+  const w=(t.toLowerCase().match(/[a-z']+/g)||[]), s=t.split(/[.!?]+/).filter(x=>x.trim());
+  const fw=["the","and","if","to","in","i","it","is","of","so","that","you","me","not","do"];
+  return [Math.min(1,(w.length/Math.max(1,s.length))/28),
+    Math.min(1,w.filter(x=>fw.includes(x)).length/Math.max(1,w.length)/.45),
+    Math.min(1,((t.match(/[,;:—-]/g)||[]).length/Math.max(1,w.length))/.12),
+    Math.min(1,ng(t,3).size/420),
+    Math.min(1,new Set(w).size/Math.max(1,w.length)/.85),
+    Math.min(1,(w.join("").length/Math.max(1,w.length))/7)];
+}
+function ng(t,n){ const s=t.toLowerCase().replace(/\s+/g," "), o=new Set();
+  for(let i=0;i<=s.length-n;i++) o.add(s.slice(i,i+n)); return o; }
+function cos(a,b){ let d=0,x=0,y=0; for(let i=0;i<a.length;i++){d+=a[i]*b[i];x+=a[i]**2;y+=b[i]**2;}
+  return d/Math.max(1e-6,Math.sqrt(x)*Math.sqrt(y)); }
+gaugeSVG(document.getElementById("gaugesvg"),0,"#A88BE0");
+document.getElementById("runstyl").onclick=function(){
+  const btn=this; btn.textContent="✦ comparing…";
+  setTimeout(()=>{
+    const a=document.getElementById("txtA").value, b=document.getElementById("txtB").value;
+    const A=ng(a,3), B=ng(b,3), inter=[...A].filter(x=>B.has(x)).length;
+    const jac=inter/((A.size+B.size-inter)||1);
+    const va=fv(a), vb=fv(b);
+    const score=Math.round(Math.min(99,(cos(va,vb)*.55+jac*.45)*108));
+    const cls=score>=80?"VERY HIGH":score>=60?"HIGH":score>=30?"MODERATE":"LOW";
+    document.getElementById("gaugeval").textContent=score;
+    document.getElementById("gaugeval").style.color=cc(score);
+    const cl=document.getElementById("gaugecls"); cl.textContent=cls+" SIMILARITY"; cl.style.color=cc(score);
+    gaugeSVG(document.getElementById("gaugesvg"),score,cc(score));
+    document.getElementById("feats").innerHTML=FEAT.map((f,i)=>{
+      const sim=Math.round((1-Math.abs(va[i]-vb[i]))*100);
+      return `<div class="featline"><span style="width:112px">${f}</span><span class="tr"><i data-w="${sim}"></i></span><b>${sim}</b></div>`;
+    }).join("")+`<div style="font-size:12px;opacity:.75;margin-top:6px">shared letter triples: ${inter} · jaccard ${jac.toFixed(2)}</div>`;
+    setTimeout(()=> document.querySelectorAll("#feats .tr i").forEach(i=> i.style.width=i.dataset.w+"%"),50);
+    btn.textContent="✦ run the comparison";
+    toast("🧪","ran a stylometric comparison","styl");
+    say(`That came out at ${score} out of 100 — ${cls.toLowerCase()} similarity. Notice what's driving it: punctuation habits, and a repeated phrase or two. It's a hint, not a fingerprint.`);
+  }, RM?40:800);
+};
+
+/* ===================== report ===================== */
+const BUILD=["gathering the case entities","resolving the evidence behind each link","recomputing the attribution scores",
+  "snapshotting the relationship board","attaching style and behaviour findings","writing the limitations section"];
+document.getElementById("genreport").onclick=()=>{
+  const log=document.getElementById("runlog"), doc=document.getElementById("doc");
+  log.innerHTML=""; doc.classList.remove("in"); doc.innerHTML="";
+  let i=0;
+  (function step(){
+    if(i<BUILD.length){
+      const d=document.createElement("div"); d.textContent="· "+BUILD[i]+" …"; log.appendChild(d);
+      const k=i; setTimeout(()=> d.innerHTML="· "+BUILD[k]+' <span class="ok">done ✓</span>', RM?20:300);
+      i++; setTimeout(step, RM?40:520);
+    } else {
+      const d=document.createElement("div");
+      d.innerHTML='<span class="ok">report assembled — DT-2026-0114-R3, 11 pages ✿</span>';
+      log.appendChild(d); renderDoc();
+      toast("📄","first report generated","report");
+      say("Report's done. It leads with the summary, then the scores, then the contradictions and the limitations — because a report that hides its weak spots isn't worth much.");
+    }
+  })();
+};
+function renderDoc(){
+  const doc=document.getElementById("doc");
+  doc.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div><h3 style="font-size:21px;margin:0">DT-2026-0114-R3</h3>
+        <div style="color:var(--ink2);font-size:12.5px">Attribution assessment · analyst a.nair · 19 Sep 2026</div></div>
+      <span class="stampbox">SYNTHETIC</span></div>
+    <h3 style="margin-top:18px">executive summary</h3>
+    <p style="color:var(--ink2);font-size:14.5px">Six pseudonymous entities are tracked in this case. The strongest correlation links the vendor identities ShadowFox and GhostVendor through a reused PGP fingerprint, a shared payment address and a certificate present in both infrastructure records. Two contradictions remain unresolved, so the assessment stays at analytical confidence.</p>
+    <h3 style="margin-top:16px">attribution findings</h3>
+    <table><thead><tr><th>actor</th><th>score</th><th>class</th><th>evidence</th><th>sources</th></tr></thead><tbody>
+      ${ACTORS.map(a=>`<tr><td style="font-weight:600">${a.name}</td><td style="color:${cc(a.conf)};font-weight:700">${a.conf}</td><td>${a.cls}</td><td>${a.ev}</td><td>${a.src}</td></tr>`).join("")}
+    </tbody></table>
+    <h3 style="margin-top:16px">limitations</h3>
+    <p style="color:var(--ink2);font-size:14.5px">Stylometric and behavioural signals describe surface characteristics only. They do not establish authorship or identity. The registration dates and shipping claims that contradict the primary correlation have not been reconciled.</p>
+    <div class="note" style="margin-top:15px">Analytical correlations represent evidence-based research findings and should not be read as definitive identification without independent verification.</div>`;
+  requestAnimationFrame(()=> doc.classList.add("in"));
+}
+const flash=(id,txt)=>{ const b=document.getElementById(id), o=b.textContent;
+  b.textContent=txt; setTimeout(()=> b.textContent=o,1400); };
+document.getElementById("expcsv").onclick=()=>{ flash("expcsv","CSV queued ✓"); toast("🗂️","CSV export queued"); };
+document.getElementById("expjson").onclick=()=>{ flash("expjson","JSON queued ✓"); toast("🗂️","JSON export queued"); };
+
+/* ===================== MIRA — voice (fixed) + tour ===================== */
+const mira=document.getElementById("mira"), bubble=document.getElementById("bubble"),
+      btext=document.getElementById("bubbletext");
+let voiceOn=false, typing=null, curVoice=null, voiceReady=false;
+
+function loadVoices(){
+  return new Promise(resolve=>{
+    let v = speechSynthesis.getVoices ? speechSynthesis.getVoices() : [];
+    if(v && v.length){ resolve(v); return; }
+    const onchange = ()=>{ v = speechSynthesis.getVoices();
+      if(v.length){ speechSynthesis.onvoiceschanged = null; resolve(v); } };
+    speechSynthesis.onvoiceschanged = onchange;
+    setTimeout(()=> resolve(speechSynthesis.getVoices()||[]), 1200);
+  });
+}
+function scoreVoice(v){
+  let s = 0;
+  if(/^en/i.test(v.lang)) s += 5;
+  if(v.localService) s += 3;                    // local voices are clearer than laggy remote ones
+  if(/female|samantha|zira|karen|tessa|victoria|susan|moira|fiona|google uk english female|google us english/i.test(v.name)) s += 6;
+  if(/male/i.test(v.name)) s -= 4;
+  return s;
+}
+async function pickVoice(){
+  const vs = await loadVoices();
+  if(!vs || !vs.length) return null;
+  return vs.slice().sort((a,b)=> scoreVoice(b)-scoreVoice(a))[0];
+}
+const supportsVoice = "speechSynthesis" in window;
+if(supportsVoice) pickVoice().then(v=>{ curVoice=v; voiceReady=true; });
+
+/* Chrome/Edge cut long utterances off after ~15s unless nudged. */
+if(supportsVoice) setInterval(()=>{
+  if(speechSynthesis.speaking && !speechSynthesis.paused){ speechSynthesis.pause(); speechSynthesis.resume(); }
+}, 9000);
+
+let voiceQueue = [];
+function speakQueued(text){
+  if(!supportsVoice) return;
+  speechSynthesis.cancel();
+  voiceQueue = (text.match(/[^.!?]+[.!?]*/g) || [text]).map(s=>s.trim()).filter(Boolean);
+  playNext();
+}
+function playNext(){
+  if(!voiceQueue.length){ mira.classList.remove("talking"); return; }
+  const s = voiceQueue.shift();
+  const u = new SpeechSynthesisUtterance(s);
+  u.voice = curVoice; u.pitch = 1.12; u.rate = 0.98; u.volume = 1;
+  u.onstart = ()=> mira.classList.add("talking");
+  u.onend = playNext; u.onerror = playNext;
+  speechSynthesis.speak(u);
+}
+function typeOut(text){
+  clearInterval(typing); btext.textContent="";
+  if(RM){ btext.textContent=text; return; }
+  let i=0;
+  typing=setInterval(()=>{ btext.textContent=text.slice(0,++i); if(i>=text.length) clearInterval(typing); }, 16);
+}
+let lastLine="";
+function say(text){
+  lastLine=text; mira.classList.add("up"); bubble.classList.add("show");
+  typeOut(text);
+  if(voiceOn) speakQueued(text);
+  else { mira.classList.add("talking"); setTimeout(()=>mira.classList.remove("talking"), Math.min(3600,text.length*42)); }
+}
+const TOUR=[
+  ["hero","Hi, I'm Mira! I'll walk you through DARKTRACE, a workbench for authorized threat-intelligence research. Every scrap of data on this board is made up."],
+  ["s-about","Here's the shape of it. We collect what an analyst is allowed to have, correlate the identifiers inside it, and explain every conclusion. That torn card lists everything we refuse to build, on purpose."],
+  ["s-ingest","Observations come in as JSON, CSV, or a STIX-like bundle. Watch the tags fly into the jar — each one is an identifier we lifted out, still linked back to the record it came from."],
+  ["s-graph","This is my favourite part. Every bubble is an entity, every thread a relationship. Go on, drag one! Dashed threads are hunches, not facts — they stay dashed so nobody mistakes a guess for proof."],
+  ["s-actors","Six actors live in this demo corpus. Tap a card and you get a confidence gauge, the evidence supporting it, and — just as important — the evidence arguing against it."],
+  ["s-timeline","Everything one actor did, pinned in order. First alias, first fingerprint, first wallet, then a brand new account right after the old one went quiet. Read it like a timeline, not a verdict."],
+  ["s-stylometry","Two writing samples, side by side. Edit them and press compare. It measures sentence shape, punctuation habits and repeated letter-triples — a signal, never a verdict."],
+  ["s-report","Finally, it all folds into a report: summary, scores, contradictions, limitations, plus CSV and JSON. That's the whole tour — go drag something on that graph, it's more fun than it looks."]
+];
+let step=-1, touring=false;
+function goStep(i){
+  if(i<0||i>=TOUR.length) return;
+  step=i; touring=true;
+  const [id,line]=TOUR[i];
+  document.getElementById(id).scrollIntoView({behavior:"smooth",block:"start"});
+  setTimeout(()=>say(line), 500);
+}
+function enableVoice(){
+  voiceOn = true;
+  document.getElementById("bvoice").textContent = "🔊 voice on"; document.getElementById("bvoice").classList.add("on");
+  speakQueued("Hi. Can you hear me okay? Good. Let's go.");
+}
+document.getElementById("starttour").onclick=()=>{ if(!voiceOn) enableVoice(); goStep(0); };
+document.getElementById("skiptour").onclick=()=>{
+  touring=false;
+  if(!voiceOn) enableVoice();
+  document.getElementById("s-about").scrollIntoView({behavior:"smooth"});
+  say("Go ahead and explore. I'll chime in as you reach each part — tap me any time to hear it again.");
+};
+document.getElementById("bnext").onclick=()=> goStep(Math.min(TOUR.length-1, step+1));
+document.getElementById("bprev").onclick=()=> goStep(Math.max(0, step-1));
+document.getElementById("bhide").onclick=()=>{ bubble.classList.remove("show"); if(supportsVoice) speechSynthesis.cancel(); mira.classList.remove("talking"); };
+document.getElementById("miraholder").onclick=()=>{ bubble.classList.add("show"); if(lastLine) say(lastLine); };
+document.getElementById("bvoice").onclick=function(){
+  if(!voiceOn){ enableVoice(); return; }
+  voiceOn=false; this.textContent="🔇 voice off"; this.classList.remove("on");
+  if(supportsVoice){ speechSynthesis.cancel(); } mira.classList.remove("talking");
+};
+
+/* auto-narrate on scroll when not on a guided step */
+const sio=new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(!e.isIntersecting || touring) return;
+    const t=TOUR.find(t=>t[0]===e.target.id);
+    if(t && t[1]!==lastLine) say(t[1]);
+  });
+},{threshold:.42});
+["s-about","s-ingest","s-graph","s-actors","s-timeline","s-stylometry","s-report"]
+  .forEach(id=> sio.observe(document.getElementById(id)));
+addEventListener("wheel",()=>{ touring=false; },{passive:true});
+addEventListener("touchmove",()=>{ touring=false; },{passive:true});
+
+/* eyes follow the pointer, a little */
+addEventListener("mousemove",ev=>{
+  const p=document.getElementById("pupils"); if(!p) return;
+  const dx=(ev.clientX/innerWidth-.5)*4, dy=(ev.clientY/innerHeight-.5)*3;
+  p.setAttribute("transform",`translate(${dx.toFixed(1)} ${dy.toFixed(1)})`);
+});
+
+/* boot */
+initGraph();
+setTimeout(()=>{ mira.classList.add("up"); bubble.classList.add("show");
+  typeOut(supportsVoice ? "Hi! I'm Mira. Tap “🔊 hear me” or press the tour button so I can actually talk." : "Hi! I'm Mira. Your browser can't do text-to-speech, so I'll just type at you.");
+}, 900);
+</script>
+</body>
+</html>
